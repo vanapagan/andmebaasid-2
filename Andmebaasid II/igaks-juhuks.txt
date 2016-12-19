@@ -1,0 +1,13 @@
+SELECT toode.toode_id,
+    toode.nimetus,
+    toote_seisundi_liik.nimetus AS seisund,
+    toode.kirjeldus,
+    toode.hind,
+    toode.pilt,
+    toode.reg_aeg,
+    toode.pildilink
+   FROM toote_tyyp
+     JOIN (toote_seisundi_liik
+     JOIN toode ON toote_seisundi_liik.toote_seisundi_liik_kood = toode.toote_seisundi_liik_kood) ON toote_tyyp.toote_tyyp_kood = toode.toote_tyyp_kood
+  WHERE toode.toote_seisundi_liik_kood = ANY (ARRAY[2, 3])
+  ORDER BY toote_seisundi_liik.nimetus, toode.nimetus;

@@ -1,0 +1,14 @@
+APPLE	Apple tooted	Kõik tooted, mis kannavad  Õuna kaubamärki
+BEATSAUDIO	Beats Audio tooted	Kõik tooted, mis kannavad  Beats Audio kaubamärki
+CISCO	Cisco tooted	Kõik tooted, mis kannavad  Cisco kaubamärki
+DELL	Dell tooted	Kõik tooted, mis kannavad  DELL kaubamärki
+HP	Helwett Packard tooted	Kõik tooted, mis kannavad  HP kaubamärki
+INDESIT	Indesit tooted	Kõik tooted, mis kannavad  Indesit kaubamärki
+JBL	JBL tooted	Kõik tooted, mis kannavad  JBL kaubamärki
+LG	LG tooted	Kõik tooted, mis kannavad LG kaubamärki
+MICROSOFT	Microsofti tooted	Kõik tooted, mis kannavad  Microsofti kaubamärki
+NOKIA	Nokia tooted	Kõik tooted, mis kannavad  Nokia kaubamärki
+PANASONIC	Panasonic tooted	Kõik tooted, mis kannavad  Panasonicu kaubamärki
+SAMSUNG	Samsungi tooted	Kõik tooted, mis kannavad Samsungi kaubamärki
+SENNHEISER	Sennheiseri tooted	Kõik tooted, mis kannavad  Sennheiseri kaubamärki
+SONY	Sony tooted	Kõik tooted, mis kannavad  Sony kaubamärki

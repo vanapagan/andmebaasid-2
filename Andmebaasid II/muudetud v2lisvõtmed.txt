@@ -1,0 +1,5 @@
+fk_tootaja_tootaja_seisundi_liik	
+FOREIGN KEY (tootaja_seisundi_liik_kood) REFERENCES tootaja_seisundi_liik(tootaja_seisundi_liik_kood)
+
+fk_toode_toote_seisundi_liik	
+FOREIGN KEY (toote_seisundi_liik_kood) REFERENCES toote_seisundi_liik(toote_seisundi_liik_kood)
