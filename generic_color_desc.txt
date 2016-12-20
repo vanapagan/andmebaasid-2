@@ -1,0 +1,22 @@
+		
+		if (d <= 0.10) {
+            return "ilus";
+        } else if (d > 0.10 && d <= 0.20) {
+            return "rahustav";
+        } else if (d > 0.20 && d <= 0.30) {
+            return "elegantne";
+        } else if (d > 0.30 && d <= 0.40) {
+            return "lummav";
+        } else if (d > 0.40 && d <= 0.50) {
+            return "kaunis";
+        } else if (d > 0.50 && d <= 0.60) {
+            return "suurejooneline";
+        } else if (d > 0.60 && d <= 0.70) {
+            return "armas";
+        } else if (d > 0.70 && d <= 0.80) {
+            return "võimas";
+        } else if (d > 0.80 && d <= 0.90) {
+            return "klassikaline";
+        } else {
+            return "erk";
+        }

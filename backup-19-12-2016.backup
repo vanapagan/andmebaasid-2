@@ -1,0 +1,1861 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 9.5.3
+-- Dumped by pg_dump version 9.5.1
+
+-- Started on 2016-12-19 12:59:38
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- TOC entry 1 (class 3079 OID 13223)
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
+--
+
+CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
+
+
+--
+-- TOC entry 3295 (class 0 OID 0)
+-- Dependencies: 1
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+
+
+--
+-- TOC entry 2 (class 3079 OID 274387)
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: 
+--
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+--
+-- TOC entry 3296 (class 0 OID 0)
+-- Dependencies: 2
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+SET search_path = public, pg_catalog;
+
+--
+-- TOC entry 678 (class 1247 OID 166949)
+-- Name: d_nimetus; Type: DOMAIN; Schema: public; Owner: t142290
+--
+
+CREATE DOMAIN d_nimetus AS character varying(50) NOT NULL DEFAULT 'puudub'::character varying
+	CONSTRAINT chk_nimetus_ei_koosne_tyhikutest CHECK (((VALUE)::text !~ '^[[:space:]]*$'::text));
+
+
+ALTER DOMAIN d_nimetus OWNER TO t142290;
+
+--
+-- TOC entry 258 (class 1255 OID 154028)
+-- Name: f_assume_you_must_use_files(); Type: FUNCTION; Schema: public; Owner: t135056
+--
+
+CREATE FUNCTION f_assume_you_must_use_files() RETURNS TABLE(table_schema character varying, table_name character varying, column_name character varying)
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO information_schema, pg_temp
+    AS $_$
+DECLARE
+sql_stmt TEXT;
+cnt BIGINT;
+varchar_columns RECORD;
+BEGIN
+RAISE NOTICE 'Detecting possible occurrences of the antipattern "Assume You
+Must Use Files"';
+FOR varchar_columns IN SELECT c.table_schema, c.table_name, c.column_name
+FROM INFORMATION_SCHEMA.columns AS c INNER JOIN INFORMATION_SCHEMA.tables AS t
+USING (table_schema, table_name) WHERE c.data_type IN ('character varying', 'text')
+AND t.table_type='BASE TABLE' AND 
+c.table_schema NOT IN (SELECT schema_name
+FROM INFORMATION_SCHEMA.schemata
+WHERE schema_name<>'public' AND
+schema_owner='postgres' AND schema_name IS NOT NULL) ORDER BY c.table_schema, c.table_name LOOP
+table_schema:= varchar_columns.table_schema;
+table_name:= varchar_columns.table_name;
+column_name:= varchar_columns.column_name;
+sql_stmt:='SELECT Count(' || quote_ident(column_name) || ') AS c FROM
+' || quote_ident(table_schema) ||'.' || quote_ident(table_name) || ' WHERE '||
+quote_ident(column_name) || '~''^.*/.*\.[A-Za-z]{3}$''';
+/*The source of the regular expression:
+http://stackoverflow.com/questions/6416065/c-sharp-regex-for-file-paths-e-g-c-testtest-exe*/
+RAISE NOTICE '%', sql_stmt;
+EXECUTE sql_stmt INTO cnt;
+IF cnt>0 THEN
+RETURN NEXT;
+END IF;
+END LOOP;
+RAISE NOTICE 'Detection completed';
+RETURN;
+END;
+$_$;
+
+
+ALTER FUNCTION public.f_assume_you_must_use_files() OWNER TO t135056;
+
+--
+-- TOC entry 257 (class 1255 OID 154017)
+-- Name: f_check_format_comma_separated_list(); Type: FUNCTION; Schema: public; Owner: t135056
+--
+
+CREATE FUNCTION f_check_format_comma_separated_list() RETURNS TABLE(table_schema character varying, table_name character varying, column_name character varying)
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO information_schema, pg_temp
+    AS $$
+DECLARE
+sql_stmt TEXT;
+cnt BIGINT;
+varchar_columns RECORD;
+BEGIN
+RAISE NOTICE 'Detecting possible occurrences of the antipattern "Format
+Comma-Separated Lists"';
+FOR varchar_columns IN SELECT c.table_schema, c.table_name, c.column_name
+FROM INFORMATION_SCHEMA.columns AS c INNER JOIN INFORMATION_SCHEMA.tables AS t USING
+(table_schema, table_name) WHERE c.data_type IN ('character varying', 'text') AND
+t.table_type='BASE TABLE' AND c.table_schema NOT IN (SELECT schema_name
+FROM INFORMATION_SCHEMA.schemata
+WHERE schema_name<>'public' AND
+schema_owner='postgres' AND schema_name IS NOT NULL)  AND
+lower(c.column_name) NOT LIKE '%aadress%' AND
+lower(c.column_name) NOT LIKE '%address%' AND
+lower(c.column_name) NOT LIKE '%elukoht%' AND
+lower(c.column_name) NOT LIKE '%kirjeldus%' AND
+lower(c.column_name) NOT LIKE '%tekst%' AND
+lower(c.column_name) NOT LIKE '%description%' AND
+lower(c.column_name) NOT LIKE '%kommentaar%' AND
+lower(c.column_name) NOT LIKE '%comment%' AND
+lower(c.column_name) NOT LIKE '%diagnoos%' AND
+lower(c.column_name) NOT LIKE '%diagnosis%' AND
+lower(c.column_name) NOT LIKE '%ringkon%' AND
+lower(c.column_name) NOT LIKE '%constituency%'
+ORDER BY c.table_schema, c.table_name LOOP
+table_schema:= varchar_columns.table_schema;
+table_name:= varchar_columns.table_name;
+column_name:= varchar_columns.column_name;
+sql_stmt:='SELECT Count(' || quote_ident(column_name) || ') AS c FROM
+' || quote_ident(table_schema) ||'.' || quote_ident(table_name) || ' WHERE '||
+quote_ident(column_name) || '~''(.+)([,;]{1}.+)+''';
+EXECUTE sql_stmt INTO cnt;
+IF cnt>0 THEN
+RETURN NEXT;
+END IF;
+END LOOP;
+RAISE NOTICE 'Detection completed';
+RETURN;
+END;
+$$;
+
+
+ALTER FUNCTION public.f_check_format_comma_separated_list() OWNER TO t135056;
+
+--
+-- TOC entry 229 (class 1255 OID 154015)
+-- Name: f_check_password(); Type: FUNCTION; Schema: public; Owner: t135056
+--
+
+CREATE FUNCTION f_check_password() RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO information_schema, pg_temp
+    AS $$
+DECLARE
+sql_stmt TEXT;
+val TEXT ;
+passwd_columns RECORD;
+table_schema TEXT;
+table_name TEXT;
+column_name TEXT;
+sample_value TEXT;
+return_str TEXT:='';
+BEGIN
+RAISE NOTICE 'Checking whether password is open text';
+FOR passwd_columns IN SELECT c.table_schema, c.table_name, c.column_name
+FROM INFORMATION_SCHEMA.columns AS c INNER JOIN INFORMATION_SCHEMA.tables AS t USING
+(table_schema, table_name) WHERE c.data_type IN ('character', 'character varying', 'text') AND
+t.table_type='BASE TABLE' AND c.table_schema NOT IN (SELECT schema_name
+FROM INFORMATION_SCHEMA.schemata
+WHERE schema_name<>'public' AND
+schema_owner='postgres' AND schema_name IS NOT NULL)  AND
+(lower(c.column_name) LIKE '%parool%' OR
+lower(c.column_name) LIKE '%passwd%' OR
+lower(c.column_name) LIKE '%password%' OR
+lower(c.column_name) LIKE '%salasona%')
+ORDER BY c.table_schema, c.table_name LOOP
+table_schema:= passwd_columns.table_schema;
+table_name:= passwd_columns.table_name;
+column_name:= passwd_columns.column_name;
+sql_stmt:='SELECT ' || quote_ident(column_name) || ' AS c FROM ' || quote_ident(table_schema) ||'.' || quote_ident(table_name) || ' LIMIT 1';
+EXECUTE sql_stmt INTO sample_value;
+return_str:=return_str || ' ' || quote_ident(table_schema) || '.' ||  quote_ident(table_name) || '.' || quote_ident(column_name) || '=' || sample_value;
+END LOOP;
+RAISE NOTICE 'Detection completed';
+RETURN return_str;
+END;
+$$;
+
+
+ALTER FUNCTION public.f_check_password() OWNER TO t135056;
+
+--
+-- TOC entry 263 (class 1255 OID 154016)
+-- Name: f_default_value_with_no_match(); Type: FUNCTION; Schema: public; Owner: t135056
+--
+
+CREATE FUNCTION f_default_value_with_no_match() RETURNS TABLE(foreign_ns text, foreign_table text, foreign_colname text, target_ns text, target_table text, target_colname text, target_default text)
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO information_schema, pg_temp
+    AS $$
+DECLARE
+sql_stmt TEXT;
+cnt BIGINT;
+rslt TEXT:='';
+fks RECORD;
+BEGIN
+RAISE NOTICE 'Detecting foreign key columns that have a default value that does not have a matching value in the
+key of the primary table.';
+FOR fks IN (WITH d AS (SELECT A.table_schema::text, A.table_name::text, A.column_name::text, A.column_default::text
+FROM information_schema.columns A
+INNER JOIN information_schema.tables T
+ON A.table_schema = T.table_schema
+AND A.table_name = T.table_name
+INNER JOIN information_schema.schemata S
+ON A.table_schema=S.schema_name
+WHERE column_default IS NOT NULL 
+AND T.table_type='BASE TABLE' AND domain_name IS NULL
+AND (A.table_schema = 'public'
+OR S.schema_owner<>'postgres')
+UNION SELECT A.table_schema, A.table_name , A.column_name, D.domain_default
+FROM information_schema.columns A
+INNER JOIN information_schema.tables T
+ON A.table_schema = T.table_schema
+AND A.table_name = T.table_name
+INNER JOIN information_schema.schemata S
+ON A.table_schema=S.schema_name
+INNER JOIN information_schema.domains D
+ON A.domain_schema = D.domain_schema
+AND A.domain_name = D.domain_name
+WHERE T.table_type='BASE TABLE'
+AND (A.table_schema = 'public'
+OR S.schema_owner<>'postgres')),
+fk AS (select (select nspname from pg_namespace where oid=f.relnamespace)::text as foreign_ns,
+f.relname::text as foreign_table,
+(select a.attname from pg_attribute a where a.attrelid = f.oid and a.attnum = o.confkey[1] and a.attisdropped = false)::text as foreign_colname,
+(select nspname from pg_namespace where oid=m.relnamespace)::text as target_ns,
+m.relname::text as target_table,
+(select a.attname from pg_attribute a where a.attrelid = m.oid and a.attnum = o.conkey[1] and a.attisdropped = false)::text as target_colname 
+from pg_constraint o left join    pg_class c on c.oid = o.conrelid
+left join pg_class f on f.oid = o.confrelid left join pg_class m on m.oid = o.conrelid
+where o.contype = 'f' and o.conrelid in (select oid from pg_class c where c.relkind = 'r'))
+SELECT fk.*, d.column_default AS target_default
+FROM fk, d
+WHERE fk.target_ns=d.table_schema AND
+fk.target_table=d.table_name AND
+fk.target_colname=d.column_name) LOOP
+sql_stmt:='SELECT Count(' || quote_ident(fks.foreign_colname) || ') AS c FROM
+' || quote_ident(fks.foreign_ns) ||'.' || quote_ident(fks.foreign_table) || ' WHERE '||
+quote_ident(fks.foreign_colname) || '::text='||fks.target_default || '::text';
+IF sql_stmt IS NOT NULL THEN
+EXECUTE sql_stmt INTO cnt;
+IF cnt=0 THEN
+foreign_ns:=fks.foreign_ns;
+foreign_table:=fks.foreign_table;
+foreign_colname:=fks.foreign_colname;
+target_ns:=fks.target_ns;
+target_table:=fks.target_table;
+target_colname:=fks.target_colname;
+target_default:=fks.target_default;
+RETURN NEXT;
+END IF;
+END IF;
+END LOOP;
+RAISE NOTICE 'Detection completed';
+RETURN;
+END;
+$$;
+
+
+ALTER FUNCTION public.f_default_value_with_no_match() OWNER TO t135056;
+
+--
+-- TOC entry 207 (class 1255 OID 113765)
+-- Name: f_fahrenheit_celsius(numeric); Type: FUNCTION; Schema: public; Owner: t142290
+--
+
+CREATE FUNCTION f_fahrenheit_celsius(temp_fahr numeric) RETURNS numeric
+    LANGUAGE sql IMMUTABLE STRICT LEAKPROOF
+    AS $$ SELECT round(((temp_fahr - 32.0) * 5.0 / 9.0),3); $$;
+
+
+ALTER FUNCTION public.f_fahrenheit_celsius(temp_fahr numeric) OWNER TO t142290;
+
+--
+-- TOC entry 260 (class 1255 OID 361665)
+-- Name: f_lopeta_toode(integer); Type: FUNCTION; Schema: public; Owner: t135056
+--
+
+CREATE FUNCTION f_lopeta_toode(p_id integer) RETURNS boolean
+    LANGUAGE plpgsql STRICT SECURITY DEFINER
+    AS $$BEGIN
+UPDATE toode SET toote_seisundi_liik_kood = 4 WHERE toode_id = p_id;
+IF FOUND THEN
+      RETURN TRUE;
+   ELSE
+      RETURN FALSE;
+   END IF;
+END
+$$;
+
+
+ALTER FUNCTION public.f_lopeta_toode(p_id integer) OWNER TO t135056;
+
+--
+-- TOC entry 3297 (class 0 OID 0)
+-- Dependencies: 260
+-- Name: FUNCTION f_lopeta_toode(p_id integer); Type: COMMENT; Schema: public; Owner: t135056
+--
+
+COMMENT ON FUNCTION f_lopeta_toode(p_id integer) IS 'Selle funtksiooni abil saab pgApexi kasutajaliideses algatada toote lõpetamist';
+
+
+--
+-- TOC entry 259 (class 1255 OID 274997)
+-- Name: f_on_juhataja(text, text); Type: FUNCTION; Schema: public; Owner: t142290
+--
+
+CREATE FUNCTION f_on_juhataja(p_e_meil text, p_parool text) RETURNS boolean
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO public, pg_temp
+    AS $$
+DECLARE rslt boolean;
+BEGIN
+SELECT INTO rslt (parool = public.crypt(p_parool, parool)) 
+FROM isik, tootaja WHERE Upper(e_meil)=Upper(p_e_meil) AND amet_kood
+BETWEEN 1 AND 8 AND tootaja_seisundi_liik_kood IN (1,6,7);
+RETURN coalesce(rslt, FALSE);
+END;
+$$;
+
+
+ALTER FUNCTION public.f_on_juhataja(p_e_meil text, p_parool text) OWNER TO t142290;
+
+--
+-- TOC entry 3298 (class 0 OID 0)
+-- Dependencies: 259
+-- Name: FUNCTION f_on_juhataja(p_e_meil text, p_parool text); Type: COMMENT; Schema: public; Owner: t142290
+--
+
+COMMENT ON FUNCTION f_on_juhataja(p_e_meil text, p_parool text) IS 'Selle funktsiooni abil autenditakse juhatajat. 
+Parameetri p_e_meil oodatav väärtus on tõstutundetu kasutajanimi 
+ja p_parool oodatav väärtus on tõstutundlik avatekstiline parool. 
+Juhatajal on õigus süsteemi siseneda, vaid siis kui tema seisundiks 
+on tööl või haiguslehel või hoolduslehel';
+
+
+--
+-- TOC entry 264 (class 1255 OID 365732)
+-- Name: f_toote_lisamisel_maara_seisund(); Type: FUNCTION; Schema: public; Owner: t135056
+--
+
+CREATE FUNCTION f_toote_lisamisel_maara_seisund() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	IF NEW.toote_seisundi_liik_kood IS NULL OR
+		NOT (NEW.toote_seisundi_liik_kood = 1) THEN
+		NEW.toote_seisundi_liik_kood = 1;
+	END IF;
+	RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.f_toote_lisamisel_maara_seisund() OWNER TO t135056;
+
+--
+-- TOC entry 3299 (class 0 OID 0)
+-- Dependencies: 264
+-- Name: FUNCTION f_toote_lisamisel_maara_seisund(); Type: COMMENT; Schema: public; Owner: t135056
+--
+
+COMMENT ON FUNCTION f_toote_lisamisel_maara_seisund() IS 'See trigeri funktsioon aitab jõustada ärireegli: Toote lisamisel saab tema seisundi vaikimisi väärtuseks 1 (ootel)';
+
+
+--
+-- TOC entry 265 (class 1255 OID 365920)
+-- Name: f_toote_lisamisel_maara_vaikimisi_seisund(); Type: FUNCTION; Schema: public; Owner: t135056
+--
+
+CREATE FUNCTION f_toote_lisamisel_maara_vaikimisi_seisund() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	IF NEW.toote_seisundi_liik_kood IS NULL OR
+		NOT (NEW.toote_seisundi_liik_kood = 1) THEN
+		NEW.toote_seisundi_liik_kood = 1;
+	END IF;
+	RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.f_toote_lisamisel_maara_vaikimisi_seisund() OWNER TO t135056;
+
+--
+-- TOC entry 3300 (class 0 OID 0)
+-- Dependencies: 265
+-- Name: FUNCTION f_toote_lisamisel_maara_vaikimisi_seisund(); Type: COMMENT; Schema: public; Owner: t135056
+--
+
+COMMENT ON FUNCTION f_toote_lisamisel_maara_vaikimisi_seisund() IS 'See trigeri funktsioon aitab jõustada ärireegli: Toote lisamisel saab tema seisundi vaikimisi väärtuseks 1 (ootel)';
+
+
+--
+-- TOC entry 261 (class 1255 OID 363437)
+-- Name: f_valideeri_aktiveerimine(); Type: FUNCTION; Schema: public; Owner: t135056
+--
+
+CREATE FUNCTION f_valideeri_aktiveerimine() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+RAISE EXCEPTION 'Ei saa aktiveerida toodet, mis ei ole seisundis 1 (ootel) või 3 (mitteaktiivne)';
+END;
+$$;
+
+
+ALTER FUNCTION public.f_valideeri_aktiveerimine() OWNER TO t135056;
+
+--
+-- TOC entry 3301 (class 0 OID 0)
+-- Dependencies: 261
+-- Name: FUNCTION f_valideeri_aktiveerimine(); Type: COMMENT; Schema: public; Owner: t135056
+--
+
+COMMENT ON FUNCTION f_valideeri_aktiveerimine() IS 'See trigeri funktsioon aitab jõustada ärireegli: Ei
+saa aktiveerida toodet, kui toode ei ole seisundis 1 (ootel) või 3 (mitteaktiivne).';
+
+
+--
+-- TOC entry 262 (class 1255 OID 334302)
+-- Name: f_valideeri_lopetamine(); Type: FUNCTION; Schema: public; Owner: t142290
+--
+
+CREATE FUNCTION f_valideeri_lopetamine() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+RAISE EXCEPTION 'Ei saa lõpetada toodet, mis ei ole seisundis 2 (aktiivne) või 3 (mitteaktiivne)';
+END;
+$$;
+
+
+ALTER FUNCTION public.f_valideeri_lopetamine() OWNER TO t142290;
+
+--
+-- TOC entry 3302 (class 0 OID 0)
+-- Dependencies: 262
+-- Name: FUNCTION f_valideeri_lopetamine(); Type: COMMENT; Schema: public; Owner: t142290
+--
+
+COMMENT ON FUNCTION f_valideeri_lopetamine() IS 'See trigeri funktsioon aitab jõustada ärireegli: Ei
+saa lõpetada toodet, kui toode ei ole seisundis 2 (aktiivne) või 3 (mitteaktiivne).';
+
+
+SET default_tablespace = '';
+
+SET default_with_oids = false;
+
+--
+-- TOC entry 198 (class 1259 OID 130034)
+-- Name: toode; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE toode (
+    toode_id integer NOT NULL,
+    nimetus d_nimetus,
+    toote_seisundi_liik_kood smallint DEFAULT 1 NOT NULL,
+    toote_tyyp_kood smallint NOT NULL,
+    toote_brand_kood character varying(25) NOT NULL,
+    mootyhik_kood character varying(2) NOT NULL,
+    isik_id integer NOT NULL,
+    reg_aeg timestamp without time zone DEFAULT date_trunc('minute'::text, ('now'::text)::timestamp without time zone) NOT NULL,
+    hind numeric(8,2) NOT NULL,
+    kirjeldus character varying(500),
+    pilt bytea,
+    pildilink character varying DEFAULT 255,
+    CONSTRAINT chk_toode_hind_on_nullist_suurem CHECK ((hind > (0)::numeric)),
+    CONSTRAINT chk_toode_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_toode_pildilink_ei_koosne_tyhikutest CHECK (((pildilink)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_toode_pilt_ei_koosne_tyhikutest CHECK (((pilt)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_toode_reg_aeg_on_vahemikus_01_01_2010_kuni_31_12_2100 CHECK (((reg_aeg >= '2010-01-01 00:00:00'::timestamp without time zone) AND (reg_aeg <= '2100-12-31 00:00:00'::timestamp without time zone))),
+    CONSTRAINT chk_toode_toode_id_on_pos_arv CHECK ((toode_id > 0))
+);
+
+
+ALTER TABLE toode OWNER TO t142290;
+
+--
+-- TOC entry 190 (class 1259 OID 129929)
+-- Name: toote_seisundi_liik; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE toote_seisundi_liik (
+    toote_seisundi_liik_kood smallint NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_seisundi_liik_toote_seisundi_liik_kood_on_pos_arv CHECK ((toote_seisundi_liik_kood > 0)),
+    CONSTRAINT chk_toote_seisundi_liik_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text))
+);
+
+
+ALTER TABLE toote_seisundi_liik OWNER TO t142290;
+
+--
+-- TOC entry 191 (class 1259 OID 129938)
+-- Name: toote_tyyp; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE toote_tyyp (
+    toote_tyyp_kood smallint NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_toote_tyyp_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_toote_tyyp_toote_tyyp_kood_on_pos_arv CHECK ((toote_tyyp_kood > 0))
+);
+
+
+ALTER TABLE toote_tyyp OWNER TO t142290;
+
+--
+-- TOC entry 203 (class 1259 OID 257860)
+-- Name: aktiveeri_toode; Type: VIEW; Schema: public; Owner: t143051
+--
+
+CREATE VIEW aktiveeri_toode WITH (security_barrier='true') AS
+ SELECT toode.toode_id,
+    toode.nimetus,
+    toote_seisundi_liik.nimetus AS seisund,
+    toode.kirjeldus,
+    toode.hind,
+    toode.pilt,
+    toode.reg_aeg
+   FROM (toote_seisundi_liik
+     JOIN (toote_tyyp
+     JOIN toode ON ((toote_tyyp.toote_tyyp_kood = toode.toote_tyyp_kood))) ON ((toote_seisundi_liik.toote_seisundi_liik_kood = toode.toote_seisundi_liik_kood)))
+  WHERE (toode.toote_seisundi_liik_kood = ANY (ARRAY[1, 3]))
+  ORDER BY toote_seisundi_liik.nimetus, toode.nimetus;
+
+
+ALTER TABLE aktiveeri_toode OWNER TO t143051;
+
+--
+-- TOC entry 3303 (class 0 OID 0)
+-- Dependencies: 203
+-- Name: VIEW aktiveeri_toode; Type: COMMENT; Schema: public; Owner: t143051
+--
+
+COMMENT ON VIEW aktiveeri_toode IS 'Vaade aktiveerimist ootavatest toodetest';
+
+
+--
+-- TOC entry 182 (class 1259 OID 129523)
+-- Name: amet; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE amet (
+    amet_kood smallint NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_amet_amet_kood_on_pos_arv CHECK ((amet_kood > 0)),
+    CONSTRAINT chk_amet_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text))
+);
+
+
+ALTER TABLE amet OWNER TO t142290;
+
+--
+-- TOC entry 194 (class 1259 OID 129959)
+-- Name: isik; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE isik (
+    isik_id integer NOT NULL,
+    isikukood character varying(50) NOT NULL,
+    e_meil character varying(254) NOT NULL,
+    riik_kood character(3) NOT NULL,
+    isiku_seisundi_liik_kood smallint DEFAULT 1 NOT NULL,
+    parool character varying(60) NOT NULL,
+    reg_aeg timestamp without time zone DEFAULT date_trunc('minute'::text, ('now'::text)::timestamp without time zone) NOT NULL,
+    synni_kp date DEFAULT date_trunc('minute'::text, ('1900-01-01'::date)::timestamp without time zone) NOT NULL,
+    eesnimi character varying(115) NOT NULL,
+    elukoht character varying(255),
+    perenimi character varying(115),
+    telefoninumber character varying(31),
+    CONSTRAINT chk_isik_aadress_ei_koosne_tyhikutest CHECK (((elukoht)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_isik_e_meil_symbolite_kontroll CHECK (((e_meil)::text ~ '^.+@.+[.].{2,3}$'::text)),
+    CONSTRAINT chk_isik_eesnimi_ei_koosne_tyhikutest CHECK (((eesnimi)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_isik_isik_id_on_pos_arv CHECK ((isik_id > 0)),
+    CONSTRAINT chk_isik_isikukood_on_korrektne_eesti_isikukood CHECK (((NOT (riik_kood = 'EST'::bpchar)) OR ((isikukood)::text ~ '^([3-6]{1}[[:digit:]]{2}[0-1]{1}[[:digit:]]{1}[0-3]{1}[[:digit:]]{5})$'::text))),
+    CONSTRAINT chk_isik_parool_ei_koosne_tyhikutest CHECK (((parool)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_isik_perenimi_ei_koosne_tyhikutest CHECK (((perenimi)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_isik_synni_kp_on_vahemikus_01_01_1900_kuni_31_12_2100 CHECK (((synni_kp >= '1900-01-01'::date) AND (synni_kp <= '2100-12-31'::date))),
+    CONSTRAINT chk_isik_synni_kp_on_vaiksem_reg_aeg CHECK ((synni_kp < reg_aeg)),
+    CONSTRAINT chk_isik_synni_kp_on_vaiksem_vordne_tanasest_kuupaevast CHECK ((synni_kp <= now())),
+    CONSTRAINT chk_isik_telefoni_nr_ei_koosne_tyhikutest CHECK (((telefoninumber)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_isik_telefoni_nr_sisaldab_nr_pluss_thk CHECK (((telefoninumber)::text ~ '^([[:digit:]]|[+]|[[:space:]])+$'::text))
+);
+
+
+ALTER TABLE isik OWNER TO t142290;
+
+--
+-- TOC entry 193 (class 1259 OID 129957)
+-- Name: isik_isik_id_seq; Type: SEQUENCE; Schema: public; Owner: t142290
+--
+
+CREATE SEQUENCE isik_isik_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE isik_isik_id_seq OWNER TO t142290;
+
+--
+-- TOC entry 3304 (class 0 OID 0)
+-- Dependencies: 193
+-- Name: isik_isik_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: t142290
+--
+
+ALTER SEQUENCE isik_isik_id_seq OWNED BY isik.isik_id;
+
+
+--
+-- TOC entry 183 (class 1259 OID 129532)
+-- Name: isiku_seisundi_liik; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE isiku_seisundi_liik (
+    isiku_seisundi_liik_kood smallint NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_isiku_seisundi_liik_isiku_seisundi_liik_kood_on_pos_arv CHECK ((isiku_seisundi_liik_kood > 0)),
+    CONSTRAINT chk_isiku_seisundi_liik_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text))
+);
+
+
+ALTER TABLE isiku_seisundi_liik OWNER TO t142290;
+
+--
+-- TOC entry 184 (class 1259 OID 129541)
+-- Name: kliendi_seisundi_liik; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE kliendi_seisundi_liik (
+    kliendi_seisundi_liik_kood smallint NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_kliendi_seisundi_liik_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_kliendi_seisundi_liik_kliendi_seisundi_liik_kood_on_pos_arv CHECK ((kliendi_seisundi_liik_kood > 0))
+);
+
+
+ALTER TABLE kliendi_seisundi_liik OWNER TO t142290;
+
+--
+-- TOC entry 196 (class 1259 OID 130015)
+-- Name: klient; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE klient (
+    isik_id integer NOT NULL,
+    kliendi_seisundi_liik_kood smallint DEFAULT 1 NOT NULL,
+    on_nous_otseturundusega boolean DEFAULT false NOT NULL,
+    CONSTRAINT chk_klient_on_nous_otseturundusega_ei_koosne_tyhikutest CHECK (((on_nous_otseturundusega)::text !~ '^[[:space:]]*$'::text))
+);
+
+
+ALTER TABLE klient OWNER TO t142290;
+
+--
+-- TOC entry 205 (class 1259 OID 405011)
+-- Name: lopeta_toode; Type: VIEW; Schema: public; Owner: t135056
+--
+
+CREATE VIEW lopeta_toode WITH (security_barrier='true') AS
+ SELECT toode.toode_id,
+    toode.nimetus,
+    toote_seisundi_liik.nimetus AS seisund,
+    toode.kirjeldus,
+    toode.hind,
+    toode.pilt,
+    toode.pildilink,
+    date(toode.reg_aeg) AS reg_kp
+   FROM (toote_tyyp
+     JOIN (toote_seisundi_liik
+     JOIN toode ON ((toote_seisundi_liik.toote_seisundi_liik_kood = toode.toote_seisundi_liik_kood))) ON ((toote_tyyp.toote_tyyp_kood = toode.toote_tyyp_kood)))
+  WHERE (toode.toote_seisundi_liik_kood = ANY (ARRAY[2, 3]))
+  ORDER BY toote_seisundi_liik.nimetus, toode.nimetus;
+
+
+ALTER TABLE lopeta_toode OWNER TO t135056;
+
+--
+-- TOC entry 3305 (class 0 OID 0)
+-- Dependencies: 205
+-- Name: VIEW lopeta_toode; Type: COMMENT; Schema: public; Owner: t135056
+--
+
+COMMENT ON VIEW lopeta_toode IS 'Lõpeta toode, kui toode on seda lubavas seisundis';
+
+
+--
+-- TOC entry 185 (class 1259 OID 129724)
+-- Name: mootyhik; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE mootyhik (
+    mootyhik_kood character varying(2) NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_mootyhik_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_mootyhik_kood_ei_tyhikutest CHECK (((mootyhik_kood)::text !~ '^[[:space:]]*$'::text))
+);
+
+
+ALTER TABLE mootyhik OWNER TO t142290;
+
+--
+-- TOC entry 186 (class 1259 OID 129733)
+-- Name: riik; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE riik (
+    riik_kood character(3) NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_riik_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_riik_riik_kood_iso_koosneb_suurtahtedest CHECK ((riik_kood ~ '^[A-Z]{3}$'::text))
+);
+
+
+ALTER TABLE riik OWNER TO t142290;
+
+--
+-- TOC entry 197 (class 1259 OID 130032)
+-- Name: toode_toode_id_seq; Type: SEQUENCE; Schema: public; Owner: t142290
+--
+
+CREATE SEQUENCE toode_toode_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE toode_toode_id_seq OWNER TO t142290;
+
+--
+-- TOC entry 3306 (class 0 OID 0)
+-- Dependencies: 197
+-- Name: toode_toode_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: t142290
+--
+
+ALTER SEQUENCE toode_toode_id_seq OWNED BY toode.toode_id;
+
+
+--
+-- TOC entry 201 (class 1259 OID 168147)
+-- Name: toodete_koondaruanne; Type: VIEW; Schema: public; Owner: t143051
+--
+
+CREATE VIEW toodete_koondaruanne WITH (security_barrier='true') AS
+ SELECT toote_seisundi_liik.toote_seisundi_liik_kood,
+    upper((toote_seisundi_liik.nimetus)::text) AS seisundi_nimetus,
+    count(toode.toote_seisundi_liik_kood) AS arv
+   FROM (toote_seisundi_liik
+     LEFT JOIN toode ON ((toote_seisundi_liik.toote_seisundi_liik_kood = toode.toote_seisundi_liik_kood)))
+  GROUP BY toote_seisundi_liik.toote_seisundi_liik_kood, (upper((toote_seisundi_liik.nimetus)::text))
+  ORDER BY toote_seisundi_liik.toote_seisundi_liik_kood;
+
+
+ALTER TABLE toodete_koondaruanne OWNER TO t143051;
+
+--
+-- TOC entry 3307 (class 0 OID 0)
+-- Dependencies: 201
+-- Name: VIEW toodete_koondaruanne; Type: COMMENT; Schema: public; Owner: t143051
+--
+
+COMMENT ON VIEW toodete_koondaruanne IS 'Koondaruanne erinevas seisundis olevatest toodetest';
+
+
+--
+-- TOC entry 195 (class 1259 OID 129994)
+-- Name: tootaja; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE tootaja (
+    isik_id integer NOT NULL,
+    amet_kood smallint NOT NULL,
+    tootaja_seisundi_liik_kood smallint DEFAULT 1 NOT NULL,
+    CONSTRAINT chk_tootaja_amet_kood_ei_koosne_tyhikutest CHECK (((amet_kood)::text !~ '^[[:space:]]*$'::text))
+);
+
+
+ALTER TABLE tootaja OWNER TO t142290;
+
+--
+-- TOC entry 187 (class 1259 OID 129743)
+-- Name: tootaja_seisundi_liik; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE tootaja_seisundi_liik (
+    tootaja_seisundi_liik_kood smallint NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_tootaja_seisundi_liik_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_tootaja_seisundi_liik_tootaja_seisundi_liik_kood_on_pos_arv CHECK ((tootaja_seisundi_liik_kood > 0))
+);
+
+
+ALTER TABLE tootaja_seisundi_liik OWNER TO t142290;
+
+--
+-- TOC entry 188 (class 1259 OID 129752)
+-- Name: toote_brand; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE toote_brand (
+    toote_brand_kood character varying(25) NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_toote_brand_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_toote_brand_toote_brand_kood_ei_koosne_tyhikutest CHECK (((toote_brand_kood)::text !~ '^[[:space:]]*$'::text))
+);
+
+
+ALTER TABLE toote_brand OWNER TO t142290;
+
+--
+-- TOC entry 189 (class 1259 OID 129761)
+-- Name: toote_kategooria; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE toote_kategooria (
+    toote_kategooria_kood smallint NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_toote_kategooria_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_toote_kategooria_toote_kategooria_kood_on_pos_arv CHECK ((toote_kategooria_kood > 0))
+);
+
+
+ALTER TABLE toote_kategooria OWNER TO t142290;
+
+--
+-- TOC entry 200 (class 1259 OID 130133)
+-- Name: toote_kategooria_omamine; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE toote_kategooria_omamine (
+    toode_id integer NOT NULL,
+    toote_kategooria_kood smallint NOT NULL,
+    CONSTRAINT chk_toote_kategooria_omamine_toote_id_ei_koosne_tyhikutest CHECK (((toode_id)::text !~ '^[[:space:]]*$'::text))
+);
+
+
+ALTER TABLE toote_kategooria_omamine OWNER TO t142290;
+
+--
+-- TOC entry 199 (class 1259 OID 130115)
+-- Name: toote_kood; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE toote_kood (
+    toote_kood character(13) NOT NULL,
+    toode_id integer NOT NULL,
+    toote_varv_kood character varying(7) NOT NULL,
+    toote_kogus smallint,
+    CONSTRAINT chk_toote_kogus_ei_ole_neg_arv CHECK ((toote_kogus >= 0)),
+    CONSTRAINT chk_toote_kood_koosneb_numbritest_ja_pikkus_on_13 CHECK ((toote_kood ~ '^[0-9]{13}$'::text))
+);
+
+
+ALTER TABLE toote_kood OWNER TO t142290;
+
+--
+-- TOC entry 192 (class 1259 OID 129947)
+-- Name: toote_varv; Type: TABLE; Schema: public; Owner: t142290
+--
+
+CREATE TABLE toote_varv (
+    toote_varv_kood character varying(7) NOT NULL,
+    nimetus d_nimetus,
+    kirjeldus character varying(255),
+    CONSTRAINT chk_toote_varv_kirjeldus_ei_koosne_tyhikutest CHECK (((kirjeldus)::text !~ '^[[:space:]]*$'::text)),
+    CONSTRAINT chk_toote_varv_kood_on_hex_formaadis CHECK (((toote_varv_kood)::text ~ '^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'::text))
+);
+
+
+ALTER TABLE toote_varv OWNER TO t142290;
+
+--
+-- TOC entry 204 (class 1259 OID 371604)
+-- Name: tooted_kogused; Type: VIEW; Schema: public; Owner: t142290
+--
+
+CREATE VIEW tooted_kogused WITH (security_barrier='true') AS
+ SELECT toode.toode_id,
+    sum(toote_kood.toote_kogus) AS kogus_kokku
+   FROM (toode
+     JOIN toote_kood ON ((toode.toode_id = toote_kood.toode_id)))
+  GROUP BY toode.toode_id;
+
+
+ALTER TABLE tooted_kogused OWNER TO t142290;
+
+--
+-- TOC entry 3308 (class 0 OID 0)
+-- Dependencies: 204
+-- Name: VIEW tooted_kogused; Type: COMMENT; Schema: public; Owner: t142290
+--
+
+COMMENT ON VIEW tooted_kogused IS 'Kuvatakse toodete kogused kokku summeerituna toode_id lõikes';
+
+
+--
+-- TOC entry 206 (class 1259 OID 405516)
+-- Name: vaata_koiki_tooteid; Type: VIEW; Schema: public; Owner: t135056
+--
+
+CREATE VIEW vaata_koiki_tooteid WITH (security_barrier='true') AS
+ SELECT toode.toode_id,
+    toote_seisundi_liik.nimetus AS seisund,
+    toode.nimetus,
+    toode.kirjeldus,
+    toode.hind,
+    tooted_kogused.kogus_kokku,
+    toode.pildilink,
+    date(toode.reg_aeg) AS reg_kp
+   FROM ((toote_seisundi_liik
+     JOIN toode ON ((toote_seisundi_liik.toote_seisundi_liik_kood = toode.toote_seisundi_liik_kood)))
+     LEFT JOIN tooted_kogused ON ((toode.toode_id = tooted_kogused.toode_id)))
+  ORDER BY toode.nimetus;
+
+
+ALTER TABLE vaata_koiki_tooteid OWNER TO t135056;
+
+--
+-- TOC entry 3309 (class 0 OID 0)
+-- Dependencies: 206
+-- Name: VIEW vaata_koiki_tooteid; Type: COMMENT; Schema: public; Owner: t135056
+--
+
+COMMENT ON VIEW vaata_koiki_tooteid IS 'Vaade kuvab kõikide toodete infot';
+
+
+--
+-- TOC entry 202 (class 1259 OID 184319)
+-- Name: vaata_otseturundusega_noustunud_klientide_andmeid; Type: VIEW; Schema: public; Owner: t135056
+--
+
+CREATE VIEW vaata_otseturundusega_noustunud_klientide_andmeid WITH (security_barrier='true') AS
+ SELECT isik.eesnimi,
+    isik.perenimi,
+    isik.synni_kp,
+    isik.e_meil,
+    isik.telefoninumber
+   FROM (isik
+     JOIN (kliendi_seisundi_liik
+     JOIN klient ON ((kliendi_seisundi_liik.kliendi_seisundi_liik_kood = klient.kliendi_seisundi_liik_kood))) ON ((isik.isik_id = klient.isik_id)))
+  WHERE (klient.on_nous_otseturundusega = true)
+  ORDER BY isik.perenimi, isik.eesnimi;
+
+
+ALTER TABLE vaata_otseturundusega_noustunud_klientide_andmeid OWNER TO t135056;
+
+--
+-- TOC entry 3310 (class 0 OID 0)
+-- Dependencies: 202
+-- Name: VIEW vaata_otseturundusega_noustunud_klientide_andmeid; Type: COMMENT; Schema: public; Owner: t135056
+--
+
+COMMENT ON VIEW vaata_otseturundusega_noustunud_klientide_andmeid IS 'Kuva kõikide aktiivsete klientide andmed, kes on andnud nõusoleku otseturunduse jaoks';
+
+
+--
+-- TOC entry 3022 (class 2604 OID 129962)
+-- Name: isik_id; Type: DEFAULT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY isik ALTER COLUMN isik_id SET DEFAULT nextval('isik_isik_id_seq'::regclass);
+
+
+--
+-- TOC entry 3043 (class 2604 OID 130037)
+-- Name: toode_id; Type: DEFAULT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toode ALTER COLUMN toode_id SET DEFAULT nextval('toode_toode_id_seq'::regclass);
+
+
+--
+-- TOC entry 3269 (class 0 OID 129523)
+-- Dependencies: 182
+-- Data for Name: amet; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO amet (amet_kood, nimetus, kirjeldus) VALUES (1, 'Juhataja', 'Juhataja tegeleb peamiselt toodete koondaruande vaatamisega ja toodete lõpetamisega');
+INSERT INTO amet (amet_kood, nimetus, kirjeldus) VALUES (2, 'Müüja', 'Müüja teenindab müügisaalis olevat klienti ja tegeleb paljude muude väiksemate asjadega');
+INSERT INTO amet (amet_kood, nimetus, kirjeldus) VALUES (3, 'Koristaja', 'Ruumide koristamine');
+
+
+--
+-- TOC entry 3281 (class 0 OID 129959)
+-- Dependencies: 194
+-- Data for Name: isik; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO isik (isik_id, isikukood, e_meil, riik_kood, isiku_seisundi_liik_kood, parool, reg_aeg, synni_kp, eesnimi, elukoht, perenimi, telefoninumber) VALUES (2, '39312245232', 'kristopalo@hotmail.com', 'EST', 1, '$2a$11$MC5SnfTBFpDLHQOrT3knaesqnmb8S5qENBCDuOCmwQxY.W.kU8xOO', '2016-11-24 17:33:00', '1993-12-24', 'Kristo', 'Tallinn', 'Palo', '5519567');
+INSERT INTO isik (isik_id, isikukood, e_meil, riik_kood, isiku_seisundi_liik_kood, parool, reg_aeg, synni_kp, eesnimi, elukoht, perenimi, telefoninumber) VALUES (3, '49511040112', 'kena.myyja@pood.ee', 'EST', 1, '$2a$11$163smXX7vlreT0s9W3S/FuvGe7S8F8jT/EqLyNpn7KEAGLWPaLVmy', '2016-11-28 10:13:00', '1995-11-04', 'Kena', 'Tallinn', 'Müüja', '112');
+INSERT INTO isik (isik_id, isikukood, e_meil, riik_kood, isiku_seisundi_liik_kood, parool, reg_aeg, synni_kp, eesnimi, elukoht, perenimi, telefoninumber) VALUES (1, '38108200226', 'erol@kunman.ee', 'EST', 1, '$2a$11$5vs0KH5TUewEq3.toKbjee36u0bi2lohG.Nw.lzRRSozUBh9EM5Bm', '2016-11-24 16:31:00', '1981-08-20', 'Erol', 'Harjumaa', 'Kunman', '53442263');
+
+
+--
+-- TOC entry 3311 (class 0 OID 0)
+-- Dependencies: 193
+-- Name: isik_isik_id_seq; Type: SEQUENCE SET; Schema: public; Owner: t142290
+--
+
+SELECT pg_catalog.setval('isik_isik_id_seq', 5, true);
+
+
+--
+-- TOC entry 3270 (class 0 OID 129532)
+-- Dependencies: 183
+-- Data for Name: isiku_seisundi_liik; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO isiku_seisundi_liik (isiku_seisundi_liik_kood, nimetus, kirjeldus) VALUES (1, 'Elus', 'Inimene on elus');
+INSERT INTO isiku_seisundi_liik (isiku_seisundi_liik_kood, nimetus, kirjeldus) VALUES (2, 'Teadmata kadunud', 'Inimene on teadmata kadunud');
+INSERT INTO isiku_seisundi_liik (isiku_seisundi_liik_kood, nimetus, kirjeldus) VALUES (3, 'Surnud', 'Inimene on surnuks tunnistatud');
+
+
+--
+-- TOC entry 3271 (class 0 OID 129541)
+-- Dependencies: 184
+-- Data for Name: kliendi_seisundi_liik; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO kliendi_seisundi_liik (kliendi_seisundi_liik_kood, nimetus, kirjeldus) VALUES (1, 'Tavaklient', 'Isik, kes ei ole avaldanud soovi olla püsiklient.');
+INSERT INTO kliendi_seisundi_liik (kliendi_seisundi_liik_kood, nimetus, kirjeldus) VALUES (2, 'Püsiklient', 'Isik on täitnud blanketi ja avaldanud soovi asuda püsikliendiks. Soov on rahuldatud.');
+INSERT INTO kliendi_seisundi_liik (kliendi_seisundi_liik_kood, nimetus, kirjeldus) VALUES (3, 'Blokeeritud klient', 'Sellistele klientidele ei tohi müüa ükskõik millistel tingimustel.');
+
+
+--
+-- TOC entry 3283 (class 0 OID 130015)
+-- Dependencies: 196
+-- Data for Name: klient; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO klient (isik_id, kliendi_seisundi_liik_kood, on_nous_otseturundusega) VALUES (1, 1, true);
+INSERT INTO klient (isik_id, kliendi_seisundi_liik_kood, on_nous_otseturundusega) VALUES (2, 1, false);
+
+
+--
+-- TOC entry 3272 (class 0 OID 129724)
+-- Dependencies: 185
+-- Data for Name: mootyhik; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('tk', 'tk', 'tükk');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('mm', 'mm', 'millimeeter');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('cm', 'cm', 'sentimeeter');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('m', 'm', 'meeter');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('in', 'in', 'toll');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('m2', 'm2', 'ruutmeeter');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('m3', 'm3', 'kuupmeeter');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('g', 'g', 'gramm');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('kg', 'kg', 'kilogramm');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('t', 't', 'tonn');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('ml', 'ml', 'milliliiter');
+INSERT INTO mootyhik (mootyhik_kood, nimetus, kirjeldus) VALUES ('l', 'l', 'liiter');
+
+
+--
+-- TOC entry 3273 (class 0 OID 129733)
+-- Dependencies: 186
+-- Data for Name: riik; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO riik (riik_kood, nimetus, kirjeldus) VALUES ('EST', 'Eesti', 'Eesti Vabariik');
+INSERT INTO riik (riik_kood, nimetus, kirjeldus) VALUES ('FIN', 'Soome', 'Soome Vabariik');
+INSERT INTO riik (riik_kood, nimetus, kirjeldus) VALUES ('LVA', 'Läti', 'Läti Vabariik');
+INSERT INTO riik (riik_kood, nimetus, kirjeldus) VALUES ('SWE', 'Rootsi', 'Rootsi Kuningriik');
+INSERT INTO riik (riik_kood, nimetus, kirjeldus) VALUES ('DEU', 'Saksamaa', 'Saksamaa Liitvabariik');
+INSERT INTO riik (riik_kood, nimetus, kirjeldus) VALUES ('POL', 'Poola', 'Poola Vabariik');
+INSERT INTO riik (riik_kood, nimetus, kirjeldus) VALUES ('USA', 'USA', 'Ameerika Ühendriigid');
+INSERT INTO riik (riik_kood, nimetus, kirjeldus) VALUES ('CHN', 'Hiina', 'Hiina Rahvavabariik');
+INSERT INTO riik (riik_kood, nimetus, kirjeldus) VALUES ('IND', 'India', 'India Vabariik');
+INSERT INTO riik (riik_kood, nimetus, kirjeldus) VALUES ('SYR', 'Süüria', 'Süüria Araabia Vabariik');
+
+
+--
+-- TOC entry 3285 (class 0 OID 130034)
+-- Dependencies: 198
+-- Data for Name: toode; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO toode (toode_id, nimetus, toote_seisundi_liik_kood, toote_tyyp_kood, toote_brand_kood, mootyhik_kood, isik_id, reg_aeg, hind, kirjeldus, pilt, pildilink) VALUES (6, 'Nutitelefon LG L9', 1, 1, 'LG', 'tk', 3, '2016-11-28 00:00:00', 125.00, 'Keskmise hinnaklassiga kvaliteetne toode', NULL, '<img src="http://www.demon.ee/AB2Pics/LG-L9.jpg" style="max-width:75px;max-height:75px;">');
+INSERT INTO toode (toode_id, nimetus, toote_seisundi_liik_kood, toote_tyyp_kood, toote_brand_kood, mootyhik_kood, isik_id, reg_aeg, hind, kirjeldus, pilt, pildilink) VALUES (12, 'Sülearvuti 13tolli', 2, 5, 'DELL', 'tk', 3, '2016-11-28 00:00:00', 1299.00, 'DELL XPS 13', NULL, '<img src="http://www.demon.ee/AB2Pics/Dell-XPS13.jpg" style="max-width:75px;max-height:75px;">');
+INSERT INTO toode (toode_id, nimetus, toote_seisundi_liik_kood, toote_tyyp_kood, toote_brand_kood, mootyhik_kood, isik_id, reg_aeg, hind, kirjeldus, pilt, pildilink) VALUES (13, 'Tahvelarvuti Pro', 1, 6, 'APPLE', 'tk', 3, '2016-11-28 00:00:00', 1499.00, 'Tahvelarvuti Pro', NULL, '<img src="http://www.demon.ee/AB2Pics/iPadPro.jpg" style="max-width:75px;max-height:75px;">');
+INSERT INTO toode (toode_id, nimetus, toote_seisundi_liik_kood, toote_tyyp_kood, toote_brand_kood, mootyhik_kood, isik_id, reg_aeg, hind, kirjeldus, pilt, pildilink) VALUES (3, 'Televiisor OLED 4K', 2, 4, 'LG', 'tk', 1, '2016-11-24 16:43:00', 3500.00, 'Telerite tipptase. Must näeb ekraanil välja nagu päris must.', '\x6c672e706e67', '<img src="http://www.demon.ee/AB2Pics/oled4K.jpg" style="max-width:75px;max-height:75px;">');
+INSERT INTO toode (toode_id, nimetus, toote_seisundi_liik_kood, toote_tyyp_kood, toote_brand_kood, mootyhik_kood, isik_id, reg_aeg, hind, kirjeldus, pilt, pildilink) VALUES (14, 'IP Telefon', 3, 3, 'CISCO', 'tk', 3, '2016-11-28 00:00:00', 120.00, 'Cisco SPA508G', NULL, '<img src="http://www.cisco.com/c/dam/en/us/products/collateral/collaboration-endpoints/small-business-spa500-series-ip-phones/data_sheet_c78-548569.doc/_jcr_content/renditions/data_sheet_c78-548569-2.jpg" style="max-width:75px;max-height:75px;">');
+INSERT INTO toode (toode_id, nimetus, toote_seisundi_liik_kood, toote_tyyp_kood, toote_brand_kood, mootyhik_kood, isik_id, reg_aeg, hind, kirjeldus, pilt, pildilink) VALUES (2, 'Televiisor FHD', 2, 4, 'SONY', 'tk', 1, '2016-11-24 16:41:00', 500.00, 'Hea ja kvaliteetne jaapani tipptehnika, soodsa hinnaga.', '\x736f6e792e6a7067', '<img src="http://www.demon.ee/AB2Pics/sony.jpg" style="max-width:75px;max-height:75px;">');
+INSERT INTO toode (toode_id, nimetus, toote_seisundi_liik_kood, toote_tyyp_kood, toote_brand_kood, mootyhik_kood, isik_id, reg_aeg, hind, kirjeldus, pilt, pildilink) VALUES (5, 'Teler QLED', 2, 4, 'SAMSUNG', 'tk', 3, '2016-11-28 00:00:00', 1000.00, 'QLED teler. 2017 aasta mudel.', NULL, '<img src="http://www.demon.ee/AB2Pics/samsa.jpg" style="max-width:75px;max-height:75px;">');
+INSERT INTO toode (toode_id, nimetus, toote_seisundi_liik_kood, toote_tyyp_kood, toote_brand_kood, mootyhik_kood, isik_id, reg_aeg, hind, kirjeldus, pilt, pildilink) VALUES (11, 'Pesumasin kuivatiga', 2, 8, 'INDESIT', 'tk', 3, '2016-11-28 00:00:00', 399.00, 'Indesit PWDE 81473 W pesumasin koos hämmastavalt efektiivse kuivatiga 1400 RPM, 8 Kg', NULL, '<img src="http://www.demon.ee/AB2Pics/Pesumasin.jpg" style="max-width:75px;max-height:75px;">');
+INSERT INTO toode (toode_id, nimetus, toote_seisundi_liik_kood, toote_tyyp_kood, toote_brand_kood, mootyhik_kood, isik_id, reg_aeg, hind, kirjeldus, pilt, pildilink) VALUES (9, 'Nutitelefon Iphone 6s', 2, 1, 'APPLE', 'tk', 3, '2016-11-28 00:00:00', 2650.00, 'Iphone 6s Kullatud', NULL, '<img src="http://www.demon.ee/AB2Pics/appleGold.jpg" style="max-width:75px;max-height:75px;">');
+
+
+--
+-- TOC entry 3312 (class 0 OID 0)
+-- Dependencies: 197
+-- Name: toode_toode_id_seq; Type: SEQUENCE SET; Schema: public; Owner: t142290
+--
+
+SELECT pg_catalog.setval('toode_toode_id_seq', 15, true);
+
+
+--
+-- TOC entry 3282 (class 0 OID 129994)
+-- Dependencies: 195
+-- Data for Name: tootaja; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (3, 2, 1);
+INSERT INTO tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (1, 1, 1);
+
+
+--
+-- TOC entry 3274 (class 0 OID 129743)
+-- Dependencies: 187
+-- Data for Name: tootaja_seisundi_liik; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (1, 'Tööl', 'Töötaja on tööl.');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (2, 'Puhkusel', 'Töötaja on korralisel puhkusel.');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (3, 'Palgata puhkusel', 'Töötaja on palgata puhkusel.');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (4, 'Tööluus', 'Töötaja puudub töölt põhjuseta.');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (5, 'Õppepuhkusel', 'Töötaja on õppepuhkusel.');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (6, 'Haiguslehel', 'Töötaja on ise haige. Haigestumise 4.–8. päevani maksab haigushüvitist Tööandja 70% Töötaja viimase kuue kuu keskmisest töötasust.');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (7, 'Hoolduslehel', 'Töötaja on hoolduslehel, hooldades alla 14.aastast last või hooldatavat');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (8, 'TL Peatatud', 'Tööleping on peatatud nt.Töötaja Ajateenistuse või Rasedus- ja sünnituspuhkuse ajaks');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (9, 'TL Lõpetatud Töötaja soovil', 'Tööleping lõpetatud Töötaja initsiatiivil, ükskõik mis põhjusel');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (10, 'TL Lõpetatud poolte kokkuleppel', 'Tööleping lõpetatud poolte kokkuleppel ehk sõbralikult');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (11, 'Vallandatud', 'Töölepingu erakorraline ülesütlemine tööandja poolt töötajast tuleneval põhjusel');
+INSERT INTO tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus, kirjeldus) VALUES (12, 'Koondatud', 'Töölepingu erakorraline ülesütlemine tööandja poolt majanduslikel põhjustel');
+
+
+--
+-- TOC entry 3275 (class 0 OID 129752)
+-- Dependencies: 188
+-- Data for Name: toote_brand; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('APPLE', 'Apple tooted', 'Kõik tooted, mis kannavad  Õuna kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('BEATSAUDIO', 'Beats Audio tooted', 'Kõik tooted, mis kannavad  Beats Audio kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('CISCO', 'Cisco tooted', 'Kõik tooted, mis kannavad  Cisco kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('DELL', 'Dell tooted', 'Kõik tooted, mis kannavad  DELL kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('HP', 'Helwett Packard tooted', 'Kõik tooted, mis kannavad  HP kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('INDESIT', 'Indesit tooted', 'Kõik tooted, mis kannavad  Indesit kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('JBL', 'JBL tooted', 'Kõik tooted, mis kannavad  JBL kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('LG', 'LG tooted', 'Kõik tooted, mis kannavad LG kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('MICROSOFT', 'Microsofti tooted', 'Kõik tooted, mis kannavad  Microsofti kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('NOKIA', 'Nokia tooted', 'Kõik tooted, mis kannavad  Nokia kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('PANASONIC', 'Panasonic tooted', 'Kõik tooted, mis kannavad  Panasonicu kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('SAMSUNG', 'Samsungi tooted', 'Kõik tooted, mis kannavad Samsungi kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('SENNHEISER', 'Sennheiseri tooted', 'Kõik tooted, mis kannavad  Sennheiseri kaubamärki');
+INSERT INTO toote_brand (toote_brand_kood, nimetus, kirjeldus) VALUES ('SONY', 'Sony tooted', 'Kõik tooted, mis kannavad  Sony kaubamärki');
+
+
+--
+-- TOC entry 3276 (class 0 OID 129761)
+-- Dependencies: 189
+-- Data for Name: toote_kategooria; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO toote_kategooria (toote_kategooria_kood, nimetus, kirjeldus) VALUES (1, 'Telefon', 'Telefonid ja sarnast funktsionaalsust pakkuvad seadmed');
+INSERT INTO toote_kategooria (toote_kategooria_kood, nimetus, kirjeldus) VALUES (2, 'Mobiil', 'Kõik kaasaskantavad seadmed');
+INSERT INTO toote_kategooria (toote_kategooria_kood, nimetus, kirjeldus) VALUES (3, 'Ekraan', 'Televiisorid ja presentatsiooni ekraanid');
+INSERT INTO toote_kategooria (toote_kategooria_kood, nimetus, kirjeldus) VALUES (4, 'Koduelektroonika', 'Elektrooniline seade, mida saab kodus kasutada');
+INSERT INTO toote_kategooria (toote_kategooria_kood, nimetus, kirjeldus) VALUES (5, 'Kodumasinad', 'Majapidamises kasutatavad seadmed');
+INSERT INTO toote_kategooria (toote_kategooria_kood, nimetus, kirjeldus) VALUES (6, 'Köögiseadmed', 'Kõik seadmed, mida võidakse kasutada toidu valmistamise protsessis');
+INSERT INTO toote_kategooria (toote_kategooria_kood, nimetus, kirjeldus) VALUES (7, 'Fotograafia', 'Kõik seadmed, mida võidakse kasutada fotografeerimise käigus');
+INSERT INTO toote_kategooria (toote_kategooria_kood, nimetus, kirjeldus) VALUES (8, 'Arvutid', 'Infotöötluse seadmed, mille alla kuuluvad sülearvutid, lauaarvutid jm arvutite lisavarustus');
+
+
+--
+-- TOC entry 3287 (class 0 OID 130133)
+-- Dependencies: 200
+-- Data for Name: toote_kategooria_omamine; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (2, 3);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (3, 3);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (6, 2);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (6, 1);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (5, 4);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (5, 3);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (9, 1);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (9, 2);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (11, 5);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (11, 4);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (12, 8);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (13, 2);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (13, 8);
+INSERT INTO toote_kategooria_omamine (toode_id, toote_kategooria_kood) VALUES (14, 1);
+
+
+--
+-- TOC entry 3286 (class 0 OID 130115)
+-- Dependencies: 199
+-- Data for Name: toote_kood; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO toote_kood (toote_kood, toode_id, toote_varv_kood, toote_kogus) VALUES ('8806087217841', 3, '#808080', 2);
+INSERT INTO toote_kood (toote_kood, toode_id, toote_varv_kood, toote_kogus) VALUES ('8806087217840', 3, '#000000', 5);
+INSERT INTO toote_kood (toote_kood, toode_id, toote_varv_kood, toote_kogus) VALUES ('4905524942293', 2, '#808080', 4);
+INSERT INTO toote_kood (toote_kood, toode_id, toote_varv_kood, toote_kogus) VALUES ('0888462501330', 9, '#FFFF00', 1);
+INSERT INTO toote_kood (toote_kood, toode_id, toote_varv_kood, toote_kogus) VALUES ('8806088321431', 5, '#000000', 1);
+INSERT INTO toote_kood (toote_kood, toode_id, toote_varv_kood, toote_kogus) VALUES ('8007842761825', 11, '#FFFFFF', 1);
+INSERT INTO toote_kood (toote_kood, toode_id, toote_varv_kood, toote_kogus) VALUES ('2000000718958', 12, '#808080', 3);
+
+
+--
+-- TOC entry 3277 (class 0 OID 129929)
+-- Dependencies: 190
+-- Data for Name: toote_seisundi_liik; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO toote_seisundi_liik (toote_seisundi_liik_kood, nimetus, kirjeldus) VALUES (1, 'Ootel', 'Toode on olekus ootel, kui toote andmed on registreerimisel või kui juba registreeritud toote andmeid muudetakse ja toodet pole veel müüki pandud.');
+INSERT INTO toote_seisundi_liik (toote_seisundi_liik_kood, nimetus, kirjeldus) VALUES (2, 'Aktiivne', 'Toode on olekus aktiivne, kui selle andmete registreerimine või registreeritud andmete muutmine on lõpuni viidud ja toode on välja pandud müügiks.');
+INSERT INTO toote_seisundi_liik (toote_seisundi_liik_kood, nimetus, kirjeldus) VALUES (3, 'Mitteaktiivne', 'Toode on olekus mitteaktiivne, kui toode on ajutiselt müügist eemaldatud.');
+INSERT INTO toote_seisundi_liik (toote_seisundi_liik_kood, nimetus, kirjeldus) VALUES (4, 'Lõpetatud', 'Toode on olekus lõpetatud, kui toode on lõplikult müügist välja jäetud.');
+
+
+--
+-- TOC entry 3278 (class 0 OID 129938)
+-- Dependencies: 191
+-- Data for Name: toote_tyyp; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO toote_tyyp (toote_tyyp_kood, nimetus, kirjeldus) VALUES (1, 'Nutitelefon', 'Kõik nuppudeta telefonid paneme siia');
+INSERT INTO toote_tyyp (toote_tyyp_kood, nimetus, kirjeldus) VALUES (2, 'Mobiiltelefon', 'Vanad head nuppudega telefonid paneme siia');
+INSERT INTO toote_tyyp (toote_tyyp_kood, nimetus, kirjeldus) VALUES (3, 'Lauatelefon', 'IP telefonid jms kontoris kasut.fiks telefonid siia');
+INSERT INTO toote_tyyp (toote_tyyp_kood, nimetus, kirjeldus) VALUES (4, 'Televiisor', 'Televiisor - ekraaniga seade, kus lisaks TV tüüner sees');
+INSERT INTO toote_tyyp (toote_tyyp_kood, nimetus, kirjeldus) VALUES (5, 'Sülearvuti', 'Siia kõik sülearvutid, mis ei ole Tahvlid ega Nuhvlid');
+INSERT INTO toote_tyyp (toote_tyyp_kood, nimetus, kirjeldus) VALUES (6, 'Tahvelarvuti', 'Kõik alates 7 tollise ekraaniga on tahvlid');
+INSERT INTO toote_tyyp (toote_tyyp_kood, nimetus, kirjeldus) VALUES (7, 'Fotokaamera', 'Spetsiaalselt fotode tegemiseks mõeldud seadmed');
+INSERT INTO toote_tyyp (toote_tyyp_kood, nimetus, kirjeldus) VALUES (8, 'Pesumasin', 'Riideid pesevad masinad');
+INSERT INTO toote_tyyp (toote_tyyp_kood, nimetus, kirjeldus) VALUES (9, 'Nõudepesumasin', 'Nõusid pesevad masinad');
+
+
+--
+-- TOC entry 3279 (class 0 OID 129947)
+-- Dependencies: 192
+-- Data for Name: toote_varv; Type: TABLE DATA; Schema: public; Owner: t142290
+--
+
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#FF0000', 'Punane', 'Tavaline punane');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#008000', 'Roheline', 'Tavaline roheline');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#0000FF', 'Sinine', 'Tavaline sinine');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#FFFF00', 'Kollane', 'Tavaline kollane');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#000000', 'Must', 'Süsimust');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#FFFFFF', 'Valge', 'Puhas valge');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#808080', 'Hall', 'Tavaline hall');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#800080', 'Lilla', 'Tavaline lilla');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#A52A2A', 'Pruun', 'Tavaline pruun');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#FFA500', 'Oranž', 'Tavaline oranž');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#FFC0CB', 'Roosa', 'Tavaline roosa');
+INSERT INTO toote_varv (toote_varv_kood, nimetus, kirjeldus) VALUES ('#F5F5DC', 'Beež', 'Tavaline beež');
+
+
+--
+-- TOC entry 3057 (class 2606 OID 167170)
+-- Name: ak_amet_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY amet
+    ADD CONSTRAINT ak_amet_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3102 (class 2606 OID 129981)
+-- Name: ak_isik_isikukood_riik_kood; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY isik
+    ADD CONSTRAINT ak_isik_isikukood_riik_kood UNIQUE (riik_kood, isikukood);
+
+
+--
+-- TOC entry 3061 (class 2606 OID 167183)
+-- Name: ak_isiku_seisundi_liik_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY isiku_seisundi_liik
+    ADD CONSTRAINT ak_isiku_seisundi_liik_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3065 (class 2606 OID 167196)
+-- Name: ak_kliendi_seisundi_liik_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY kliendi_seisundi_liik
+    ADD CONSTRAINT ak_kliendi_seisundi_liik_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3069 (class 2606 OID 167209)
+-- Name: ak_mootyhik_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY mootyhik
+    ADD CONSTRAINT ak_mootyhik_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3073 (class 2606 OID 167222)
+-- Name: ak_riik_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY riik
+    ADD CONSTRAINT ak_riik_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3115 (class 2606 OID 167313)
+-- Name: ak_toode_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toode
+    ADD CONSTRAINT ak_toode_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3077 (class 2606 OID 167235)
+-- Name: ak_tootaja_seisundi_liik_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY tootaja_seisundi_liik
+    ADD CONSTRAINT ak_tootaja_seisundi_liik_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3081 (class 2606 OID 167248)
+-- Name: ak_toote_brand_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_brand
+    ADD CONSTRAINT ak_toote_brand_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3085 (class 2606 OID 167261)
+-- Name: ak_toote_kategooria_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_kategooria
+    ADD CONSTRAINT ak_toote_kategooria_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3089 (class 2606 OID 167274)
+-- Name: ak_toote_seisundi_liik_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_seisundi_liik
+    ADD CONSTRAINT ak_toote_seisundi_liik_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3093 (class 2606 OID 167287)
+-- Name: ak_toote_tyyp_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_tyyp
+    ADD CONSTRAINT ak_toote_tyyp_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3097 (class 2606 OID 167300)
+-- Name: ak_toote_varv_nimetus; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_varv
+    ADD CONSTRAINT ak_toote_varv_nimetus UNIQUE (nimetus);
+
+
+--
+-- TOC entry 3059 (class 2606 OID 129529)
+-- Name: pk_amet; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY amet
+    ADD CONSTRAINT pk_amet PRIMARY KEY (amet_kood);
+
+
+--
+-- TOC entry 3105 (class 2606 OID 129979)
+-- Name: pk_isik; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY isik
+    ADD CONSTRAINT pk_isik PRIMARY KEY (isik_id);
+
+
+--
+-- TOC entry 3063 (class 2606 OID 129538)
+-- Name: pk_isiku_seisundi_liik; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY isiku_seisundi_liik
+    ADD CONSTRAINT pk_isiku_seisundi_liik PRIMARY KEY (isiku_seisundi_liik_kood);
+
+
+--
+-- TOC entry 3067 (class 2606 OID 129547)
+-- Name: pk_kliendi_seisundi_liik; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY kliendi_seisundi_liik
+    ADD CONSTRAINT pk_kliendi_seisundi_liik PRIMARY KEY (kliendi_seisundi_liik_kood);
+
+
+--
+-- TOC entry 3113 (class 2606 OID 130021)
+-- Name: pk_klient; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY klient
+    ADD CONSTRAINT pk_klient PRIMARY KEY (isik_id);
+
+
+--
+-- TOC entry 3071 (class 2606 OID 129730)
+-- Name: pk_mootyhik; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY mootyhik
+    ADD CONSTRAINT pk_mootyhik PRIMARY KEY (mootyhik_kood);
+
+
+--
+-- TOC entry 3075 (class 2606 OID 129740)
+-- Name: pk_riik; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY riik
+    ADD CONSTRAINT pk_riik PRIMARY KEY (riik_kood);
+
+
+--
+-- TOC entry 3122 (class 2606 OID 130047)
+-- Name: pk_toode_id; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toode
+    ADD CONSTRAINT pk_toode_id PRIMARY KEY (toode_id);
+
+
+--
+-- TOC entry 3110 (class 2606 OID 129999)
+-- Name: pk_tootaja; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY tootaja
+    ADD CONSTRAINT pk_tootaja PRIMARY KEY (isik_id);
+
+
+--
+-- TOC entry 3079 (class 2606 OID 129749)
+-- Name: pk_tootaja_seisundi_liik; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY tootaja_seisundi_liik
+    ADD CONSTRAINT pk_tootaja_seisundi_liik PRIMARY KEY (tootaja_seisundi_liik_kood);
+
+
+--
+-- TOC entry 3083 (class 2606 OID 133830)
+-- Name: pk_toote_brand; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_brand
+    ADD CONSTRAINT pk_toote_brand PRIMARY KEY (toote_brand_kood);
+
+
+--
+-- TOC entry 3087 (class 2606 OID 129767)
+-- Name: pk_toote_kategooria; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_kategooria
+    ADD CONSTRAINT pk_toote_kategooria PRIMARY KEY (toote_kategooria_kood);
+
+
+--
+-- TOC entry 3129 (class 2606 OID 130137)
+-- Name: pk_toote_kategooria_omamine; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_kategooria_omamine
+    ADD CONSTRAINT pk_toote_kategooria_omamine PRIMARY KEY (toode_id, toote_kategooria_kood);
+
+
+--
+-- TOC entry 3124 (class 2606 OID 130120)
+-- Name: pk_toote_kood; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_kood
+    ADD CONSTRAINT pk_toote_kood PRIMARY KEY (toote_kood);
+
+
+--
+-- TOC entry 3091 (class 2606 OID 129935)
+-- Name: pk_toote_seisundi_liik; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_seisundi_liik
+    ADD CONSTRAINT pk_toote_seisundi_liik PRIMARY KEY (toote_seisundi_liik_kood);
+
+
+--
+-- TOC entry 3095 (class 2606 OID 129944)
+-- Name: pk_toote_tyyp; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_tyyp
+    ADD CONSTRAINT pk_toote_tyyp PRIMARY KEY (toote_tyyp_kood);
+
+
+--
+-- TOC entry 3099 (class 2606 OID 134848)
+-- Name: pk_toote_varv; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_varv
+    ADD CONSTRAINT pk_toote_varv PRIMARY KEY (toote_varv_kood);
+
+
+--
+-- TOC entry 3126 (class 2606 OID 198044)
+-- Name: uq_toote_kood_toode_id_toote_varv_kood; Type: CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_kood
+    ADD CONSTRAINT uq_toote_kood_toode_id_toote_varv_kood UNIQUE (toode_id, toote_varv_kood);
+
+
+--
+-- TOC entry 3100 (class 1259 OID 274562)
+-- Name: ak_isik_e_meil; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE UNIQUE INDEX ak_isik_e_meil ON isik USING btree (upper((e_meil)::text));
+
+
+--
+-- TOC entry 3103 (class 1259 OID 154099)
+-- Name: ixfk_isik_isiku_seisundi_liik_kood; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX ixfk_isik_isiku_seisundi_liik_kood ON isik USING btree (isiku_seisundi_liik_kood);
+
+
+--
+-- TOC entry 3111 (class 1259 OID 154133)
+-- Name: ixfk_klient_kliendi_seisundi_liik_kood; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX ixfk_klient_kliendi_seisundi_liik_kood ON klient USING btree (kliendi_seisundi_liik_kood);
+
+
+--
+-- TOC entry 3116 (class 1259 OID 154144)
+-- Name: ixfk_toode_mootyhik_kood; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX ixfk_toode_mootyhik_kood ON toode USING btree (mootyhik_kood);
+
+
+--
+-- TOC entry 3117 (class 1259 OID 154145)
+-- Name: ixfk_toode_tootaja_isik_id; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX ixfk_toode_tootaja_isik_id ON toode USING btree (isik_id);
+
+
+--
+-- TOC entry 3118 (class 1259 OID 211844)
+-- Name: ixfk_toode_toote_brand_kood; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX ixfk_toode_toote_brand_kood ON toode USING btree (toote_brand_kood);
+
+
+--
+-- TOC entry 3119 (class 1259 OID 154157)
+-- Name: ixfk_toode_toote_seisundi_liik_kood; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX ixfk_toode_toote_seisundi_liik_kood ON toode USING btree (toote_seisundi_liik_kood);
+
+
+--
+-- TOC entry 3120 (class 1259 OID 154158)
+-- Name: ixfk_toode_toote_tyyp_kood; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX ixfk_toode_toote_tyyp_kood ON toode USING btree (toote_tyyp_kood);
+
+
+--
+-- TOC entry 3107 (class 1259 OID 154169)
+-- Name: ixfk_tootaja_amet_kood; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX ixfk_tootaja_amet_kood ON tootaja USING btree (amet_kood);
+
+
+--
+-- TOC entry 3108 (class 1259 OID 154170)
+-- Name: ixfk_tootaja_tootaja_seisundi_liik_kood; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX ixfk_tootaja_tootaja_seisundi_liik_kood ON tootaja USING btree (tootaja_seisundi_liik_kood);
+
+
+--
+-- TOC entry 3127 (class 1259 OID 154171)
+-- Name: ixfk_toote_kategooria_omamine_toote_kategooria_kood; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX ixfk_toote_kategooria_omamine_toote_kategooria_kood ON toote_kategooria_omamine USING btree (toote_kategooria_kood);
+
+
+--
+-- TOC entry 3106 (class 1259 OID 154122)
+-- Name: xfk_isik_riik_kood; Type: INDEX; Schema: public; Owner: t142290
+--
+
+CREATE INDEX xfk_isik_riik_kood ON isik USING btree (riik_kood);
+
+
+--
+-- TOC entry 3148 (class 2620 OID 365921)
+-- Name: trig_toote_lisamisel_maara_seisund; Type: TRIGGER; Schema: public; Owner: t142290
+--
+
+CREATE TRIGGER trig_toote_lisamisel_maara_seisund BEFORE INSERT ON toode FOR EACH ROW EXECUTE PROCEDURE f_toote_lisamisel_maara_vaikimisi_seisund();
+
+
+--
+-- TOC entry 3146 (class 2620 OID 365915)
+-- Name: trig_valideeri_aktiveerimine; Type: TRIGGER; Schema: public; Owner: t142290
+--
+
+CREATE TRIGGER trig_valideeri_aktiveerimine BEFORE UPDATE OF toote_seisundi_liik_kood ON toode FOR EACH ROW WHEN (((NOT ((old.toote_seisundi_liik_kood = new.toote_seisundi_liik_kood) OR (old.toote_seisundi_liik_kood = ANY (ARRAY[1, 3])))) AND (new.toote_seisundi_liik_kood = 2))) EXECUTE PROCEDURE f_valideeri_aktiveerimine();
+
+
+--
+-- TOC entry 3147 (class 2620 OID 365917)
+-- Name: trig_valideeri_lopetamine; Type: TRIGGER; Schema: public; Owner: t142290
+--
+
+CREATE TRIGGER trig_valideeri_lopetamine BEFORE UPDATE OF toote_seisundi_liik_kood ON toode FOR EACH ROW WHEN (((NOT ((old.toote_seisundi_liik_kood = new.toote_seisundi_liik_kood) OR (old.toote_seisundi_liik_kood = ANY (ARRAY[2, 3])))) AND (new.toote_seisundi_liik_kood = 4))) EXECUTE PROCEDURE f_valideeri_lopetamine();
+
+
+--
+-- TOC entry 3130 (class 2606 OID 129984)
+-- Name: fk_isik_isiku_seisundi_liik; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY isik
+    ADD CONSTRAINT fk_isik_isiku_seisundi_liik FOREIGN KEY (isiku_seisundi_liik_kood) REFERENCES isiku_seisundi_liik(isiku_seisundi_liik_kood) ON UPDATE CASCADE;
+
+
+--
+-- TOC entry 3131 (class 2606 OID 129989)
+-- Name: fk_isik_riik; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY isik
+    ADD CONSTRAINT fk_isik_riik FOREIGN KEY (riik_kood) REFERENCES riik(riik_kood) ON UPDATE CASCADE;
+
+
+--
+-- TOC entry 3136 (class 2606 OID 130027)
+-- Name: fk_klient_isik; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY klient
+    ADD CONSTRAINT fk_klient_isik FOREIGN KEY (isik_id) REFERENCES isik(isik_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3135 (class 2606 OID 130022)
+-- Name: fk_klient_kliendi_seisundi_liik; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY klient
+    ADD CONSTRAINT fk_klient_kliendi_seisundi_liik FOREIGN KEY (kliendi_seisundi_liik_kood) REFERENCES kliendi_seisundi_liik(kliendi_seisundi_liik_kood) ON UPDATE CASCADE;
+
+
+--
+-- TOC entry 3140 (class 2606 OID 130070)
+-- Name: fk_toode_mootyhik; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toode
+    ADD CONSTRAINT fk_toode_mootyhik FOREIGN KEY (mootyhik_kood) REFERENCES mootyhik(mootyhik_kood) ON UPDATE CASCADE;
+
+
+--
+-- TOC entry 3138 (class 2606 OID 130060)
+-- Name: fk_toode_tootaja; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toode
+    ADD CONSTRAINT fk_toode_tootaja FOREIGN KEY (isik_id) REFERENCES tootaja(isik_id);
+
+
+--
+-- TOC entry 3141 (class 2606 OID 211845)
+-- Name: fk_toode_toote_brand; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toode
+    ADD CONSTRAINT fk_toode_toote_brand FOREIGN KEY (toote_brand_kood) REFERENCES toote_brand(toote_brand_kood) ON UPDATE CASCADE;
+
+
+--
+-- TOC entry 3139 (class 2606 OID 130065)
+-- Name: fk_toode_toote_seisundi_liik; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toode
+    ADD CONSTRAINT fk_toode_toote_seisundi_liik FOREIGN KEY (toote_seisundi_liik_kood) REFERENCES toote_seisundi_liik(toote_seisundi_liik_kood);
+
+
+--
+-- TOC entry 3137 (class 2606 OID 130055)
+-- Name: fk_toode_toote_tyyp; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toode
+    ADD CONSTRAINT fk_toode_toote_tyyp FOREIGN KEY (toote_tyyp_kood) REFERENCES toote_tyyp(toote_tyyp_kood) ON UPDATE CASCADE;
+
+
+--
+-- TOC entry 3133 (class 2606 OID 130000)
+-- Name: fk_tootaja_amet; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY tootaja
+    ADD CONSTRAINT fk_tootaja_amet FOREIGN KEY (amet_kood) REFERENCES amet(amet_kood) ON UPDATE CASCADE;
+
+
+--
+-- TOC entry 3134 (class 2606 OID 130010)
+-- Name: fk_tootaja_isik; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY tootaja
+    ADD CONSTRAINT fk_tootaja_isik FOREIGN KEY (isik_id) REFERENCES isik(isik_id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3132 (class 2606 OID 154039)
+-- Name: fk_tootaja_tootaja_seisundi_liik; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY tootaja
+    ADD CONSTRAINT fk_tootaja_tootaja_seisundi_liik FOREIGN KEY (tootaja_seisundi_liik_kood) REFERENCES tootaja_seisundi_liik(tootaja_seisundi_liik_kood);
+
+
+--
+-- TOC entry 3144 (class 2606 OID 130138)
+-- Name: fk_toote_kategooria_omamine_toode; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_kategooria_omamine
+    ADD CONSTRAINT fk_toote_kategooria_omamine_toode FOREIGN KEY (toode_id) REFERENCES toode(toode_id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3145 (class 2606 OID 130143)
+-- Name: fk_toote_kategooria_omamine_toote_kategooria; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_kategooria_omamine
+    ADD CONSTRAINT fk_toote_kategooria_omamine_toote_kategooria FOREIGN KEY (toote_kategooria_kood) REFERENCES toote_kategooria(toote_kategooria_kood) ON UPDATE CASCADE;
+
+
+--
+-- TOC entry 3142 (class 2606 OID 130128)
+-- Name: fk_toote_kood_toode; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_kood
+    ADD CONSTRAINT fk_toote_kood_toode FOREIGN KEY (toode_id) REFERENCES toode(toode_id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3143 (class 2606 OID 183844)
+-- Name: fk_toote_kood_toote_varv; Type: FK CONSTRAINT; Schema: public; Owner: t142290
+--
+
+ALTER TABLE ONLY toote_kood
+    ADD CONSTRAINT fk_toote_kood_toote_varv FOREIGN KEY (toote_varv_kood) REFERENCES toote_varv(toote_varv_kood) ON UPDATE CASCADE;
+
+
+--
+-- TOC entry 3294 (class 0 OID 0)
+-- Dependencies: 7
+-- Name: public; Type: ACL; Schema: -; Owner: postgres
+--
+
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM postgres;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO PUBLIC;
+
+
+-- Completed on 2016-12-19 12:59:40
+
+--
+-- PostgreSQL database dump complete
+--
+

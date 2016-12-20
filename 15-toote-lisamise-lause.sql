@@ -1,0 +1,2 @@
+INSERT INTO toode (toode_id, nimetus, toote_seisundi_liik_kood, toote_tyyp_kood, toote_brand_kood, mootyhik_kood, isik_id, reg_aeg, hind, kirjeldus, pilt, pildilink) 
+VALUES (15, 'Fööniotsik', 2, 1, 'SENNHEISER', 'tk', 3, '2016-11-28 00:00:00', 19.99, 'Ülipraktiline fööniotsik igale endast lugupidavale naisterahvale', NULL, NULL);
