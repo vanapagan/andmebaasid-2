@@ -1,0 +1,13 @@
+Vaade otseturundusega kliendid
+kommentaarid koondaruannete kohta (kommentaarid peaksid olema sisulisemad), vaadete kommentaarid
+funktsioon määra vaikimisi seisund. Viited op lepingutele (OP1), kirjutada OP identifikaator juurde
+telefoninumber (snake case)
+sünnikuupäev on väiksem kui hetkekuupäev, dokis võisid olla võrdsed
+veeru tüübi deklareerimine on kitsenduse jõustamine
+toote_kogus toote_koodi tabelis(?), toote koguse muutmine(?)
+müüa peab saama muuta tootekoodi, lisada tootekogust, siduda tootekoodi tootekogusega, toote kategooria omamine
+vaikimisi väärtus pingilingil (255)
+toote kirjeldus (peaks olema rohkem kui 500 märki)
+toode id ei muuda, ei peaks olema on update cascade, kaks välisvõtit, mis viitavad toote idle, pole on update cascade
+security definer funktsioonide puhul
+database user tuleb pgapexisse lisada - GRANT
